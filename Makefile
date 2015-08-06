@@ -48,7 +48,6 @@ install-dependencies:
 	pip install --upgrade --requirement doc/requirements.txt
 
 ## sharedobj   : build khmer shared object file
-
 sharedobj: $(EXTENSION_MODULE)
 
 $(EXTENSION_MODULE): $(CPPSOURCES)

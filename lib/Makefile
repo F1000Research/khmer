@@ -47,7 +47,7 @@ endif
 WARNINGS=-Wall
 
 # Flags in common to C and C++
-COMMON_FLAGS=-O3 -fPIC -std=c++11
+COMMON_FLAGS=-O3 -fPIC
 SEQAN_FLAGS=-DSEQAN_HAS_ZLIB=1 -DSEQAN_HAS_BZIP2=1
 
 # Base C/CXXFLAGS
@@ -56,7 +56,7 @@ CPPFLAGS += $(SEQAN_FLAGS)
 
 CXXFLAGS ?=
 CXXFLAGS += $(COMMON_FLAGS) $(WARNINGS)
-CXXFLAGS += -Wstrict-null-sentinel
+CXXFLAGS += -Wstrict-null-sentinel -std=c++11
 CXXFLAGS += $(INCLUDES) $(CPPFLAGS)
 
 CFLAGS	 ?=
