@@ -681,8 +681,6 @@ void SubsetPartition::do_partition_with_abundance(
     unsigned int total_reads = 0;
 
     SeenSet tagged_kmers;
-    const unsigned char ksize = _ht->ksize();
-
     SeenSet::const_iterator si, end;
 
     if (first_kmer) {
