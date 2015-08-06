@@ -8,20 +8,24 @@
 #ifndef SUBSET_HH
 #define SUBSET_HH
 
+#include <stddef.h>
+#include <queue>
+#include <string>
+
 #include "khmer.hh"
 #include "traversal.hh"
 
 namespace khmer
 {
 class CountingHash;
-class Hashtable;
 class Hashbits;
+class Hashtable;
 
 struct pre_partition_info {
     HashIntoType kmer;
     SeenSet tagged_kmers;
 
-    pre_partition_info(HashIntoType _kmer) : kmer(_kmer) {};
+    explicit pre_partition_info(HashIntoType _kmer) : kmer(_kmer) {};
 };
 
 class SubsetPartition
@@ -41,7 +45,7 @@ protected:
                                            const HashIntoType kmer);
 
 public:
-    SubsetPartition(Hashtable * ht);
+    explicit SubsetPartition(Hashtable * ht);
 
     ~SubsetPartition()
     {

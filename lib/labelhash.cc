@@ -5,10 +5,18 @@
 // Contact: khmer-project@idyll.org
 //
 
-#include "labelhash.hh"
-
-#include <sstream>
 #include <errno.h>
+#include <string.h>
+#include <iostream>
+#include <sstream> // IWYU pragma: keep
+#include <set>
+
+#include "hashbits.hh"
+#include "hashtable.hh"
+#include "khmer_exception.hh"
+#include "labelhash.hh"
+#include "read_parsers.hh"
+#include "subset.hh"
 
 #define IO_BUF_SIZE 250*1000*1000
 
@@ -65,7 +73,11 @@ LabelHash::consume_fasta_and_tag_with_labels(
     Label * the_label;
     // Iterate through the reads and consume their k-mers.
     while (!parser->is_complete( )) {
-        read = parser->get_next_read( );
+        try {
+            read = parser->get_next_read( );
+        } catch (NoMoreReadsAvailable &exc) {
+            break;
+        }
 
         if (graph->check_and_normalize_read( read.sequence )) {
             // TODO: make threadsafe!
@@ -420,16 +432,19 @@ void LabelHash::load_labels_and_tags(std::string filename)
     unsigned long n_labeltags = 1;
     try {
         unsigned int save_ksize = 0;
-	char signature[4];
+        char signature[4];
         unsigned char version = 0, ht_type = 0;
 
-	infile.read(signature, 4);
+        infile.read(signature, 4);
         infile.read((char *) &version, 1);
         infile.read((char *) &ht_type, 1);
-	if (!(std::string(signature, 4) == SAVED_SIGNATURE)) {
+        if (!(std::string(signature, 4) == SAVED_SIGNATURE)) {
             std::ostringstream err;
-            err << "Incorrect file signature " << signature
-                << " while reading labels/tags from " << filename
+            err << "Incorrect file signature 0x";
+            for(size_t i=0; i < 4; ++i) {
+                err << std::hex << (int) signature[i];
+            }
+            err << " while reading labels/tags from " << filename
                 << " Should be: " << SAVED_SIGNATURE;
             throw khmer_file_exception(err.str());
         } else if (!(version == SAVED_FORMAT_VERSION)) {

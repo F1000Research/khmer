@@ -20,7 +20,9 @@ from __future__ import print_function
 import sys
 import textwrap
 import khmer
-from khmer.khmer_args import build_counting_args, report_on_config, info
+from khmer import khmer_args
+from khmer.khmer_args import (build_counting_args, report_on_config, info,
+                              calculate_tablesize)
 from khmer.kfile import check_input_files, check_space
 from khmer.kfile import check_space_for_hashtable
 import argparse
@@ -53,7 +55,7 @@ def get_parser():
                         "sequence files.")
     parser.add_argument('--report-total-kmers', '-t', action='store_true',
                         help="Prints the total number of k-mers to stderr")
-    parser.add_argument('-C', '--coverage', type=int,
+    parser.add_argument('-C', '--coverage', type=int, default=50,
                         help='Collect reads until this coverage, then exit.')
     parser.add_argument('-o', '--output', type=argparse.FileType('w'),
                         help='Write collect reads into this file.')
@@ -76,15 +78,17 @@ def main():
         check_input_files(name, False)
 
     check_space(args.input_sequence_filename, False)
-    check_space_for_hashtable(args.n_tables * args.min_tablesize, False)
+    tablesize = calculate_tablesize(args, 'countgraph')
+    check_space_for_hashtable(args.output_countingtable_filename, tablesize,
+                              False)
 
     print('Saving k-mer counting table to %s' % base)
     print('Loading sequences from %s' % repr(filenames))
     if args.output:
         print('Outputting sequences to', args.output)
 
-    print('making k-mer counting table')
-    htable = khmer.new_counting_hash(args.ksize, args.min_tablesize)
+    print('making countgraph', file=sys.stderr)
+    htable = khmer_args.create_countgraph(args)
     htable.set_use_bigcount(args.bigcount)
 
     total_coverage = 0.
@@ -132,7 +136,8 @@ def main():
     info_fp.write('through end: %s\n' % filenames[-1])
 
     # Change 0.2 only if you really grok it.  HINT: You don't.
-    fp_rate = khmer.calc_expected_collisions(htable, args.force, max_false_pos=.2)
+    fp_rate = khmer.calc_expected_collisions(htable, False,
+                                             max_false_pos=.2)
     print('fp rate estimated to be %1.3f' % fp_rate)
     print('fp rate estimated to be %1.3f' % fp_rate, file=info_fp)
 

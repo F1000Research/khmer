@@ -13,7 +13,11 @@ import collections
 from . import khmer_tst_utils as utils
 from khmer.utils import (check_is_pair, broken_paired_reader, check_is_left,
                          check_is_right)
-from khmer.kfile import check_input_files
+from khmer.kfile import check_input_files, get_file_writer
+try:
+    from StringIO import StringIO
+except ImportError:
+    from io import StringIO
 
 
 def test_forward_hash():
@@ -21,6 +25,19 @@ def test_forward_hash():
     assert khmer.forward_hash('TTTT', 4) == 0
     assert khmer.forward_hash('CCCC', 4) == 170
     assert khmer.forward_hash('GGGG', 4) == 170
+
+
+def test_get_file_writer_fail():
+    somefile = utils.get_temp_filename("potato")
+    somefile = open(somefile, "w")
+    stopped = True
+    try:
+        get_file_writer(somefile, True, True)
+        stopped = False
+    except Exception as err:
+        assert "Cannot specify both bzip and gzip" in str(err), str(err)
+
+    assert stopped, "Expected exception"
 
 
 def test_forward_hash_no_rc():
@@ -78,6 +95,14 @@ def test_get_primes():
     assert primes == [19, 17, 13, 11, 7, 5, 3]
 
 
+def test_get_primes_fal():
+    try:
+        primes = khmer.get_n_primes_near_x(5, 5)
+        assert 0, "previous statement should fail"
+    except RuntimeError as err:
+        assert "unable to find 5 prime numbers < 5" in str(err)
+
+
 def test_extract_countinghash_info_badfile():
     try:
         khmer.extract_countinghash_info(
@@ -90,7 +115,7 @@ def test_extract_countinghash_info_badfile():
 def test_extract_countinghash_info():
     fn = utils.get_temp_filename('test_extract_counting.ct')
     for size in [1e6, 2e6, 5e6, 1e7]:
-        ht = khmer.new_counting_hash(25, size, 4)
+        ht = khmer.CountingHash(25, size, 4)
         ht.save(fn)
 
         try:
@@ -143,19 +168,32 @@ def test_extract_hashbits_info():
 def test_check_file_status_kfile():
     fn = utils.get_temp_filename('thisfiledoesnotexist')
     check_file_status_exited = False
+
+    old_stderr = sys.stderr
+    sys.stderr = capture = StringIO()
+
     try:
         check_input_files(fn, False)
     except SystemExit:
-        check_file_status_exited = True
-    assert check_file_status_exited
+        assert "does not exist" in capture.getvalue(), capture.getvalue()
+    finally:
+        sys.stderr = old_stderr
 
 
 def test_check_file_status_kfile_force():
     fn = utils.get_temp_filename('thisfiledoesnotexist')
+
+    old_stderr = sys.stderr
+    sys.stderr = capture = StringIO()
+
     try:
         check_input_files(fn, True)
     except OSError:
         assert False
+    finally:
+        sys.stderr = old_stderr
+
+    assert "does not exist" in capture.getvalue(), capture.getvalue()
 
 
 FakeFQRead = collections.namedtuple('Read', ['name', 'quality', 'sequence'])

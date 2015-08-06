@@ -22,10 +22,10 @@ import csv
 import khmer
 import threading
 import textwrap
+from khmer import khmer_args
 from khmer.khmer_args import (build_counting_args, add_threading_args,
-                              report_on_config, info)
-from khmer.kfile import (check_input_files, check_space,
-                         check_space_for_hashtable)
+                              report_on_config, info, calculate_tablesize)
+from khmer.kfile import (check_input_files, check_space_for_hashtable)
 
 
 def get_parser():
@@ -58,14 +58,9 @@ def get_parser():
     parser.add_argument('-s', '--squash', dest='squash_output', default=False,
                         action='store_true',
                         help='Overwrite output file if it exists')
-    parser.add_argument('--csv', default=False, action='store_true',
-                        help='Use the CSV format for the histogram. '
-                        'Includes column headers.')
     parser.add_argument('--savetable', default='', metavar="filename",
                         help="Save the k-mer counting table to the specified "
                         "filename.")
-    parser.add_argument('--report-total-kmers', '-t', action='store_true',
-                        help="Prints the total number of k-mers to stderr")
     parser.add_argument('-f', '--force', default=False, action='store_true',
                         help='Overwrite output file if it exists')
     return parser
@@ -77,11 +72,9 @@ def main():  # pylint: disable=too-many-locals,too-many-branches
     report_on_config(args)
 
     check_input_files(args.input_sequence_filename, args.force)
-    check_space([args.input_sequence_filename], args.force)
     if args.savetable:
-        check_space_for_hashtable(args.n_tables * args.min_tablesize,
-                                  args.force)
-
+        tablesize = calculate_tablesize(args, 'countgraph')
+        check_space_for_hashtable(args.savetable, tablesize, args.force)
     if (not args.squash_output and
             os.path.exists(args.output_histogram_filename)):
         print('ERROR: %s exists; not squashing.' %
@@ -89,20 +82,17 @@ def main():  # pylint: disable=too-many-locals,too-many-branches
         sys.exit(1)
     else:
         hist_fp = open(args.output_histogram_filename, 'w')
-        if args.csv:
-            hist_fp_csv = csv.writer(hist_fp)
-            # write headers:
-            hist_fp_csv.writerow(['abundance', 'count', 'cumulative',
-                                  'cumulative_fraction'])
+        hist_fp_csv = csv.writer(hist_fp)
+        # write headers:
+        hist_fp_csv.writerow(['abundance', 'count', 'cumulative',
+                              'cumulative_fraction'])
 
-    print('making k-mer counting table', file=sys.stderr)
-    counting_hash = khmer.new_counting_hash(args.ksize, args.min_tablesize,
-                                            args.n_tables)
+    print('making countgraph', file=sys.stderr)
+    counting_hash = khmer_args.create_countgraph(args, multiplier=1.1)
     counting_hash.set_use_bigcount(args.bigcount)
 
     print('building k-mer tracking table', file=sys.stderr)
-    tracking = khmer.new_hashbits(counting_hash.ksize(), args.min_tablesize,
-                                  args.n_tables)
+    tracking = khmer_args.create_nodegraph(args, multiplier=1.1)
 
     print('kmer_size:', counting_hash.ksize(), file=sys.stderr)
     print('k-mer counting table sizes:',
@@ -126,9 +116,8 @@ def main():  # pylint: disable=too-many-locals,too-many-branches
     for thread in threads:
         thread.join()
 
-    if args.report_total_kmers:
-        print('Total number of unique k-mers: {0}'.format(
-            counting_hash.n_unique_kmers()), file=sys.stderr)
+    print('Total number of unique k-mers: {0}'.format(
+        counting_hash.n_unique_kmers()), file=sys.stderr)
 
     abundance_lists = []
 
@@ -178,10 +167,7 @@ def main():  # pylint: disable=too-many-locals,too-many-branches
         sofar += i
         frac = sofar / float(total)
 
-        if args.csv:
-            hist_fp_csv.writerow([_, i, sofar, round(frac, 3)])
-        else:
-            print(_, i, sofar, round(frac, 3), file=hist_fp)
+        hist_fp_csv.writerow([_, i, sofar, round(frac, 3)])
 
         if sofar == total:
             break

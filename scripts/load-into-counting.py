@@ -20,10 +20,11 @@ import sys
 import threading
 import textwrap
 import khmer
+from khmer import khmer_args
 from khmer.khmer_args import build_counting_args, report_on_config, info,\
-    add_threading_args
+    add_threading_args, calculate_tablesize
 from khmer.kfile import check_file_writable
-from khmer.kfile import check_input_files, check_space
+from khmer.kfile import check_input_files
 from khmer.kfile import check_space_for_hashtable
 
 
@@ -63,8 +64,6 @@ def get_parser():
                         metavar="FORMAT", choices=[str('json'), str('tsv')],
                         help="What format should the machine readable run "
                         "summary be in? (json or tsv, disabled by default)")
-    parser.add_argument('--report-total-kmers', '-t', action='store_true',
-                        help="Prints the total number of k-mers to stderr")
     parser.add_argument('-f', '--force', default=False, action='store_true',
                         help='Overwrite output file if it exists')
     return parser
@@ -83,8 +82,9 @@ def main():
     for name in args.input_sequence_filename:
         check_input_files(name, args.force)
 
-    check_space(args.input_sequence_filename, args.force)
-    check_space_for_hashtable(args.n_tables * args.min_tablesize, args.force)
+    tablesize = calculate_tablesize(args, 'countgraph')
+    check_space_for_hashtable(args.output_countingtable_filename, tablesize,
+                              args.force)
 
     check_file_writable(base)
     check_file_writable(base + ".info")
@@ -97,9 +97,8 @@ def main():
     if os.path.exists(base + '.info'):
         os.remove(base + '.info')
 
-    print('making k-mer counting table', file=sys.stderr)
-    htable = khmer.new_counting_hash(args.ksize, args.min_tablesize,
-                                     args.n_tables)
+    print('making countgraph', file=sys.stderr)
+    htable = khmer_args.create_countgraph(args)
     htable.set_use_bigcount(args.bigcount)
 
     filename = None
@@ -124,19 +123,19 @@ def main():
             thread.join()
 
         if index > 0 and index % 10 == 0:
-            check_space_for_hashtable(args.n_tables * args.min_tablesize,
-                                      args.force)
+            tablesize = calculate_tablesize(args, 'countgraph')
+            check_space_for_hashtable(base, tablesize, args.force)
             print('mid-save', base, file=sys.stderr)
+
             htable.save(base)
         with open(base + '.info', 'a') as info_fh:
             print('through', filename, file=info_fh)
         total_num_reads += rparser.num_reads
 
     n_kmers = htable.n_unique_kmers()
-    if args.report_total_kmers:
-        print('Total number of unique k-mers:', n_kmers, file=sys.stderr)
-        with open(base + '.info', 'a') as info_fp:
-            print('Total number of unique k-mers:', n_kmers, file=info_fp)
+    print('Total number of unique k-mers:', n_kmers, file=sys.stderr)
+    with open(base + '.info', 'a') as info_fp:
+        print('Total number of unique k-mers:', n_kmers, file=info_fp)
 
     print('saving', base, file=sys.stderr)
     htable.save(base)

@@ -46,15 +46,15 @@ def main():
         print(' - kmer size =    %d \t\t(-k)' % args.ksize, file=sys.stderr)
         print(' - n hashes =     %d \t\t(-N)' % args.n_tables, file=sys.stderr)
         print(' - min hashsize = %-5.2g \t(-x)' % \
-            args.min_tablesize, file=sys.stderr)
+            args.max_tablesize, file=sys.stderr)
         print('', file=sys.stderr)
         print('Estimated memory usage is %.2g bytes ' \
             '(n_hashes x min_hashsize)' % \
-            (args.n_tables * args.min_tablesize), file=sys.stderr)
+            (args.n_tables * args.max_tablesize), file=sys.stderr)
         print('-' * 8, file=sys.stderr)
 
     K = args.ksize
-    HT_SIZE = args.min_tablesize
+    HT_SIZE = args.max_tablesize
     N_HT = args.n_tables
 
     filenames = args.input_filenames
@@ -64,7 +64,7 @@ def main():
         ht = khmer.load_counting_hash(args.loadhash)
     else:
         print('making hashtable')
-        ht = khmer.new_counting_hash(K, HT_SIZE, N_HT)
+        ht = khmer.CountingHash(K, HT_SIZE, N_HT)
 
     aligner = khmer.ReadAligner(ht, args.trusted_cutoff, args.bits_theta)
 

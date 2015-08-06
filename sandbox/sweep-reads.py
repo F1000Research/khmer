@@ -50,7 +50,7 @@ DEFAULT_BUFFER_SIZE = 10
 DEFAULT_OUT_PREF = 'reads'
 DEFAULT_RANGE = -1
 
-MIN_HSIZE = 4e7
+MAX_HSIZE = 4e7
 MIN_KSIZE = 21
 
 
@@ -121,7 +121,7 @@ class ReadBufferManager(object):
         buf = self.buffers[buf_id]
         try:
             outfp = open(fpath, 'a')
-        except IOError as _:
+        except (IOError, OSError) as _:
             print('!! ERROR: {_} !!'.format(_=_), file=sys.stderr)
             print('*** Failed to open {fn} for \
                                 buffer flush'.format(fn=fpath), file=sys.stderr)
@@ -208,15 +208,15 @@ def main():
     parser = get_parser()
     args = parser.parse_args()
 
-    if args.min_tablesize < MIN_HSIZE:
-        args.min_tablesize = MIN_HSIZE
+    if args.max_tablesize < MAX_HSIZE:
+        args.max_tablesize = MAX_HSIZE
     if args.ksize < MIN_KSIZE:
         args.ksize = MIN_KSIZE
 
-    report_on_config(args, hashtype='hashbits')
+    report_on_config(args, hashtype='nodegraph')
 
     K = args.ksize
-    HT_SIZE = args.min_tablesize
+    HT_SIZE = args.max_tablesize
     N_HT = args.n_tables
 
     traversal_range = args.traversal_range
@@ -290,11 +290,11 @@ def main():
 
                     write_record(record, outfp)
 
-            except IOError as e:
+            except (IOError, OSError) as e:
                 print('!! ERROR !!', e, file=sys.stderr)
                 print('...error splitting input. exiting...', file=sys.stderr)
 
-    except IOError as e:
+    except (IOError, OSError) as e:
         print('!! ERROR: !!', e, file=sys.stderr)
         print('...error consuming \
                             {i}. exiting...'.format(i=input_fastp), file=sys.stderr)
@@ -319,7 +319,7 @@ def main():
         file_t = 0.0
         try:
             read_fp = screed.open(read_file)
-        except IOError as error:
+        except (IOError, OSError) as error:
             print('!! ERROR: !!', error, file=sys.stderr)
             print('*** Could not open {fn}, skipping...'.format(
                 fn=read_file), file=sys.stderr)

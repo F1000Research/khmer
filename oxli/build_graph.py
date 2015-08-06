@@ -5,7 +5,7 @@
 # the three-clause BSD license; see doc/LICENSE.txt.
 # Contact: khmer-project@idyll.org
 #
-# pylint: disable=invalid-name,missing-docstring
+# pylint: disable=missing-docstring
 """
 Build a graph from the given sequences, save in <ptname>.
 
@@ -19,7 +19,9 @@ from __future__ import print_function, absolute_import, unicode_literals
 import sys
 
 import khmer
-from khmer.khmer_args import (report_on_config, info, add_threading_args)
+from khmer import khmer_args
+from khmer.khmer_args import (report_on_config, info, add_threading_args,
+                              calculate_tablesize)
 from khmer.kfile import check_input_files, check_space
 from khmer.kfile import check_space_for_hashtable
 from oxli import functions
@@ -43,16 +45,18 @@ def build_parser(parser):
 def main(args):
     info('build-graph.py', ['graph', 'SeqAn'])
 
-    report_on_config(args, hashtype='hashbits')
+    report_on_config(args, hashtype='nodegraph')
     base = args.output_filename
     filenames = args.input_filenames
 
     for fname in args.input_filenames:
         check_input_files(fname, args.force)
 
-    check_space(args.input_filenames, args.force)
-    check_space_for_hashtable(
-        (float(args.n_tables * args.min_tablesize) / 8.), args.force)
+    # if optimization args are given, do optimization
+    args = functions.do_sanity_checking(args, 0.01)
+
+    tablesize = calculate_tablesize(args, 'nodegraph')
+    check_space_for_hashtable(args.output_filename, tablesize, args.force)
 
     print('Saving k-mer presence table to %s' % base, file=sys.stderr)
     print('Loading kmers from sequences in %s' %
@@ -63,8 +67,8 @@ def main(args):
         print('We WILL build the tagset (for partitioning/traversal).',
               file=sys.stderr)
 
-    print('making k-mer presence table', file=sys.stderr)
-    htable = khmer.new_hashbits(args.ksize, args.min_tablesize, args.n_tables)
+    print('making nodegraph', file=sys.stderr)
+    htable = khmer_args.create_nodegraph(args)
 
     functions.build_graph(filenames, htable, args.threads,
                           not args.no_build_tagset)
@@ -72,8 +76,8 @@ def main(args):
     print('Total number of unique k-mers: {0}'.format(htable.n_unique_kmers()),
           file=sys.stderr)
 
-    print('saving k-mer presence table in', base + '.pt', file=sys.stderr)
-    htable.save(base + '.pt')
+    print('saving k-mer presence table in', base, file=sys.stderr)
+    htable.save(base)
 
     if not args.no_build_tagset:
         print('saving tagset in', base + '.tagset', file=sys.stderr)
@@ -91,7 +95,7 @@ def main(args):
     print('\nfalse positive rate estimated to be %1.3f' % fp_rate,
           file=info_fp)
 
-    print('wrote to', base + '.info and', base + '.pt', file=sys.stderr)
+    print('wrote to ' + base + '.info and ' + base, file=sys.stderr)
     if not args.no_build_tagset:
         print('and ' + base + '.tagset', file=sys.stderr)
 

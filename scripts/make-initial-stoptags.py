@@ -16,8 +16,9 @@ from __future__ import print_function
 import sys
 import textwrap
 import khmer
+from khmer import khmer_args
 from khmer.khmer_args import (build_counting_args, info)
-from khmer.kfile import check_input_files, check_space
+from khmer.kfile import check_input_files
 
 DEFAULT_SUBSET_SIZE = int(1e4)
 DEFAULT_COUNTING_HT_SIZE = 3e6                # number of bytes
@@ -76,16 +77,14 @@ def main():
     graphbase = args.graphbase
 
     # @RamRS: This might need some more work
-    infiles = [graphbase + '.pt', graphbase + '.tagset']
+    infiles = [graphbase, graphbase + '.tagset']
     if args.stoptags:
         infiles.append(args.stoptags)
     for _ in infiles:
         check_input_files(_, args.force)
 
-    check_space(infiles, args.force)
-
     print('loading htable %s.pt' % graphbase, file=sys.stderr)
-    htable = khmer.load_hashbits(graphbase + '.pt')
+    htable = khmer.load_hashbits(graphbase)
 
     # do we want to load stop tags, and do they exist?
     if args.stoptags:
@@ -96,8 +95,7 @@ def main():
     htable.load_tagset(graphbase + '.tagset')
 
     ksize = htable.ksize()
-    counting = khmer.new_counting_hash(ksize, args.min_tablesize,
-                                       args.n_tables)
+    counting = khmer_args.create_countgraph(args)
 
     # divide up into SUBSET_SIZE fragments
     divvy = htable.divide_tags_into_subsets(args.subset_size)

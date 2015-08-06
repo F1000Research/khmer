@@ -5,67 +5,24 @@
 // Contact: khmer-project@idyll.org
 //
 
-#include "khmer.hh"
-#include "hashtable.hh"
-#include "read_parsers.hh"
-#include "counting.hh"
-
-#include <algorithm>
-#include <sstream>
 #include <errno.h>
+#include <math.h>
+#include <algorithm>
+#include <deque>
+#include <fstream>
+#include <iostream>
+#include <sstream> // IWYU pragma: keep
+#include <queue>
+#include <set>
+
+#include "counting.hh"
+#include "hashtable.hh"
+#include "khmer.hh"
+#include "read_parsers.hh"
 
 using namespace std;
 using namespace khmer;
 using namespace khmer:: read_parsers;
-
-#ifdef WITH_INTERNAL_METRICS
-HashTablePerformanceMetrics::
-HashTablePerformanceMetrics( )
-    : IPerformanceMetrics( ),
-      clock_nsecs_norm_read( 0 ),
-      cpu_nsecs_norm_read( 0 ),
-      clock_nsecs_hash_kmer( 0 ),
-      cpu_nsecs_hash_kmer( 0 ),
-      clock_nsecs_update_tallies( 0 ),
-      cpu_nsecs_update_tallies( 0 )
-{ }
-
-
-HashTablePerformanceMetrics::
-~HashTablePerformanceMetrics( )
-{ }
-
-
-void
-HashTablePerformanceMetrics::
-accumulate_timer_deltas( uint32_t metrics_key )
-{
-
-    switch (metrics_key) {
-    case MKEY_TIME_NORM_READ:
-        clock_nsecs_norm_read +=
-            _timespec_diff_in_nsecs( _temp_clock_start, _temp_clock_stop );
-        cpu_nsecs_norm_read   +=
-            _timespec_diff_in_nsecs( _temp_cpu_start, _temp_cpu_stop );
-        break;
-    case MKEY_TIME_HASH_KMER:
-        clock_nsecs_hash_kmer +=
-            _timespec_diff_in_nsecs( _temp_clock_start, _temp_clock_stop );
-        cpu_nsecs_hash_kmer   +=
-            _timespec_diff_in_nsecs( _temp_cpu_start, _temp_cpu_stop );
-        break;
-    case MKEY_TIME_UPDATE_TALLIES:
-        clock_nsecs_update_tallies +=
-            _timespec_diff_in_nsecs( _temp_clock_start, _temp_clock_stop );
-        cpu_nsecs_update_tallies   +=
-            _timespec_diff_in_nsecs( _temp_cpu_start, _temp_cpu_stop );
-        break;
-    default:
-        throw InvalidPerformanceMetricsKey( );
-    }
-
-}
-#endif
 
 //
 // check_and_process_read: checks for non-ACGT characters before consuming
@@ -146,18 +103,18 @@ consume_fasta(
 
     // Iterate through the reads and consume their k-mers.
     while (!parser->is_complete( )) {
-
+        bool is_valid;
         try {
-            bool is_valid;
             read = parser->get_next_read( );
-
-            unsigned int this_n_consumed =
-                check_and_process_read(read.sequence, is_valid);
-
-            __sync_add_and_fetch( &n_consumed, this_n_consumed );
-            __sync_add_and_fetch( &total_reads, 1 );
-        } catch (read_parsers::NoMoreReadsAvailable) {
+        } catch (NoMoreReadsAvailable) {
+            break;
         }
+
+        unsigned int this_n_consumed =
+            check_and_process_read(read.sequence, is_valid);
+
+        __sync_add_and_fetch( &n_consumed, this_n_consumed );
+        __sync_add_and_fetch( &total_reads, 1 );
 
     } // while reads left for parser
 
@@ -314,20 +271,23 @@ void Hashtable::load_tagset(std::string infilename, bool clear_tags)
     }
 
     unsigned char version, ht_type;
-    char signature[4];
     unsigned int save_ksize = 0;
 
     size_t tagset_size = 0;
     HashIntoType * buf = NULL;
 
     try {
+        char signature[4];
         infile.read(signature, 4);
         infile.read((char *) &version, 1);
         infile.read((char *) &ht_type, 1);
         if (!(std::string(signature, 4) == SAVED_SIGNATURE)) {
             std::ostringstream err;
-            err << "Incorrect file signature " << signature
-                << " while reading tagset from " << infilename
+            err << "Incorrect file signature 0x";
+            for(size_t i=0; i < 4; ++i) {
+                err << std::hex << (int) signature[i];
+            }
+            err << " while reading tagset from " << infilename
                 << "; should be " << SAVED_SIGNATURE;
             throw khmer_file_exception(err.str());
         } else if (!(version == SAVED_FORMAT_VERSION)) {
@@ -485,7 +445,12 @@ consume_fasta_and_tag(
     // Iterate through the reads and consume their k-mers.
     while (!parser->is_complete( )) {
 
-        read = parser->get_next_read( );
+        try {
+            read = parser->get_next_read( );
+        } catch (NoMoreReadsAvailable &e) {
+            // Bail out if this error is raised
+            break;
+        }
 
         if (check_and_normalize_read( read.sequence )) {
             unsigned long long this_n_consumed = 0;
@@ -523,7 +488,11 @@ void Hashtable::consume_fasta_and_tag_with_stoptags(const std::string &filename,
     //
 
     while(!parser->is_complete())  {
-        read = parser->get_next_read();
+        try {
+            read = parser->get_next_read();
+        } catch (NoMoreReadsAvailable &exc) {
+            break;
+        }
         seq = read.sequence;
 
         read_tags.clear();
@@ -644,7 +613,11 @@ void Hashtable::consume_partitioned_fasta(const std::string &filename,
     //
 
     while(!parser->is_complete())  {
-        read = parser->get_next_read();
+        try {
+            read = parser->get_next_read();
+        } catch (NoMoreReadsAvailable &exc) {
+            break;
+        }
         seq = read.sequence;
 
         if (check_and_normalize_read(seq)) {
@@ -691,7 +664,11 @@ void Hashtable::consume_fasta_and_traverse(const std::string &filename,
     //
 
     while(!parser->is_complete())  {
-        read = parser->get_next_read();
+        try {
+            read = parser->get_next_read();
+        } catch (NoMoreReadsAvailable &exc) {
+            break;
+        }
         seq = read.sequence;
 
         if (check_and_normalize_read(seq)) {	// process?
@@ -815,7 +792,11 @@ void Hashtable::filter_if_present(const std::string &infilename,
     HashIntoType kmer;
 
     while(!parser->is_complete()) {
-        read = parser->get_next_read();
+        try {
+            read = parser->get_next_read();
+        } catch (NoMoreReadsAvailable &exc) {
+            break;
+        }
         seq = read.sequence;
 
         if (check_and_normalize_read(seq)) {
@@ -1002,19 +983,22 @@ void Hashtable::load_stop_tags(std::string infilename, bool clear_tags)
     }
 
     unsigned char version, ht_type;
-    char signature[4];
     unsigned int save_ksize = 0;
 
     size_t tagset_size = 0;
 
     try {
+        char signature[4];
         infile.read(signature, 4);
         infile.read((char *) &version, 1);
         infile.read((char *) &ht_type, 1);
         if (!(std::string(signature, 4) == SAVED_SIGNATURE)) {
             std::ostringstream err;
-            err << "Incorrect file signature " << signature
-                << " while reading stoptags from " << infilename
+            err << "Incorrect file signature 0x";
+            for(size_t i=0; i < 4; ++i) {
+                err << std::hex << (int) signature[i];
+            }
+            err << " while reading stoptags from " << infilename
                 << "; should be " << SAVED_SIGNATURE;
             throw khmer_file_exception(err.str());
         } else if (!(version == SAVED_FORMAT_VERSION)) {

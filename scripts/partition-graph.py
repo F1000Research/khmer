@@ -24,7 +24,7 @@ import argparse
 import khmer
 import sys
 from khmer.khmer_args import (add_threading_args, info)
-from khmer.kfile import check_input_files, check_space
+from khmer.kfile import check_input_files
 
 # Debugging Support
 import re
@@ -107,11 +107,9 @@ def main():
     args = get_parser().parse_args()
     basename = args.basename
 
-    filenames = [basename + '.pt', basename + '.tagset']
+    filenames = [basename, basename + '.tagset']
     for _ in filenames:
         check_input_files(_, args.force)
-
-    check_space(filenames, args.force)
 
     print('--', file=sys.stderr)
     print('SUBSET SIZE', args.subset_size, file=sys.stderr)
@@ -120,8 +118,8 @@ def main():
         print('stoptag file:', args.stoptags, file=sys.stderr)
     print('--', file=sys.stderr)
 
-    print('loading ht %s.pt' % basename, file=sys.stderr)
-    htable = khmer.load_hashbits(basename + '.pt')
+    print('loading ht %s' % basename, file=sys.stderr)
+    htable = khmer.load_hashbits(basename)
     htable.load_tagset(basename + '.tagset')
 
     # do we want to load stop tags, and do they exist?

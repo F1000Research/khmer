@@ -13,17 +13,25 @@ DEVPKGS=pep8==1.5.7 diff_cover autopep8 pylint coverage gcovr nose pep257 \
 GCOVRURL=git+https://github.com/nschum/gcovr.git@never-executed-branches
 VERSION=$(shell git describe --tags --dirty | sed s/v//)
 CPPCHECK=ls lib/*.cc khmer/_khmer.cc | grep -v test | cppcheck -DNDEBUG \
-	 -DVERSION=0.0.cppcheck -UNO_UNIQUE_RC --enable=all \
-	 --file-list=- --platform=unix64 --std=c++03 --inline-suppr \
+	 -DVERSION=0.0.cppcheck -DSEQAN_HAS_BZIP2=1 -DSEQAN_HAS_ZLIB=1 \
+	 -UNO_UNIQUE_RC --enable=all --suppress='*:/usr/*' \
+	 --file-list=- --platform=unix64 --std=c++11 --inline-suppr \
 	 --quiet -Ilib -Ithird-party/bzip2 -Ithird-party/zlib \
-	 -Ithird-party/smhasher
+	 -Ithird-party/smhasher -I/usr/include/python3.4m -DHAVE_SSIZE_T \
+	 -D__linux__ -D__x86_64__ -D__LP64__ -I/usr/include \
+	 -I/usr/include/x86_64-linux-gnu/ -I/usr/include/linux \
+	 -I/usr/lib/gcc/x86_64-linux-gnu/4.9/include/
 
 UNAME := $(shell uname)
 ifeq ($(UNAME),Linux)
-	TESTATTR='!known_failing,!jenkins'
+	TESTATTR ?= '!known_failing,!jenkins,!huge'
 else
-	TESTATTR='!known_failing,!jenkins,!huge'
+	TESTATTR ?= '!known_failing,!jenkins,!huge,!linux'
 endif
+
+
+MODEXT=$(shell python -c "import sysconfig;print(sysconfig.get_config_var('SO'))")
+EXTENSION_MODULE = khmer/_khmer$(MODEXT)
 
 ## all         : default task; compile C++ code, build shared object library
 all: sharedobj
@@ -40,9 +48,10 @@ install-dependencies:
 	pip install --upgrade --requirement doc/requirements.txt
 
 ## sharedobj   : build khmer shared object file
-sharedobj: khmer/_khmer.so
 
-khmer/_khmer.so: $(CPPSOURCES)
+sharedobj: $(EXTENSION_MODULE)
+
+$(EXTENSION_MODULE): $(CPPSOURCES)
 	./setup.py build_ext --inplace
 
 coverage-debug: $(CPPSOURCES)
@@ -64,8 +73,8 @@ dist/khmer-$(VERSION).tar.gz: $(SOURCES)
 clean: FORCE
 	cd lib && ${MAKE} clean || true
 	cd tests && rm -rf khmertest_* || true
-	rm -f khmer/_khmer.so
-	rm -f khmer/*.pyc lib/*.pyc
+	rm -f $(EXTENSION_MODULE)
+	rm -f khmer/*.pyc lib/*.pyc scripts/*.pyc tests/*.pyc oxli/*.pyc
 	./setup.py clean --all || true
 	rm -f coverage-debug
 	rm -Rf .coverage
@@ -115,10 +124,10 @@ diff_pep8_report: pep8_report.txt
 ## pep257      : check Python code style
 pep257: $(PYSOURCES) $(wildcard tests/*.py)
 	pep257 --ignore=D100,D101,D102,D103 \
-		setup.py khmer/ scripts/ tests/ || true
+		setup.py khmer/ scripts/ tests/ oxli/ || true
 
 pep257_report.txt: $(PYSOURCES) $(wildcard tests/*.py)
-	pep257 setup.py khmer/ scripts/ tests/ \
+	pep257 setup.py khmer/ scripts/ tests/ oxli/ \
 		> pep257_report.txt 2>&1 || true
 
 diff_pep257_report: pep257_report.txt
@@ -141,6 +150,7 @@ format: astyle autopep8
 ## pylint      : run static code analysis on Python code
 pylint: $(PYSOURCES) $(wildcard tests/*.py)
 	pylint --msg-template="{path}:{line}: [{msg_id}({symbol}), {obj}] {msg}" \
+                --extension-pkg-whitelist=khmer \
 		setup.py khmer/[!_]*.py khmer/__init__.py scripts/*.py tests \
 		oxli/*.py || true
 
@@ -155,9 +165,9 @@ diff_pylint_report: pylint_report.txt
 # We need to get coverage to look at our scripts. Since they aren't in a
 # python module we can't tell nosetests to look for them (via an import
 # statement). So we run nose inside of coverage.
-.coverage: $(PYSOURCES) $(wildcard tests/*.py) khmer/_khmer.so
+.coverage: $(PYSOURCES) $(wildcard tests/*.py) $(EXTENSION_MODULE)
 	coverage run --branch --source=scripts,khmer,oxli --omit=khmer/_version.py \
-		-m nose --with-xunit --attr=\!known_failing --processes=0
+		-m nose --with-xunit --attr $(TEST_ATTR) --processes=0
 
 coverage.xml: .coverage
 	coverage xml
@@ -173,7 +183,8 @@ coverage-report: .coverage
 
 coverage-gcovr.xml: coverage-debug .coverage
 	gcovr --root=. --branches --output=coverage-gcovr.xml --xml \
-          --gcov-exclude='.*zlib.*|.*bzip2.*|.*smhasher.*|.*seqan.*'
+          --gcov-exclude='.*zlib.*|.*bzip2.*|.*smhasher.*|.*seqan.*' \
+	  --exclude-unreachable-branches
 
 diff-cover: coverage-gcovr.xml coverage.xml
 	diff-cover coverage-gcovr.xml coverage.xml
@@ -207,13 +218,13 @@ libtest: FORCE
 	 $(MAKE) all && \
 	 $(MAKE) install PREFIX=../install_target
 	test -d install_target/include
-	test -f install_target/include/khmer.hh
+	test -f install_target/include/oxli/khmer.hh
 	test -d install_target/lib
-	test -f install_target/lib/libkhmer.a
+	test -f install_target/lib/liboxli.a
 	$(CXX) -o install_target/test-prog-static -I install_target/include \
-		lib/test-compile.cc install_target/lib/libkhmer.a
+		lib/test-compile.cc install_target/lib/liboxli.a
 	$(CXX) -o install_target/test-prog-dynamic -I install_target/include \
-		-L install_target/lib lib/test-compile.cc -lkhmer
+		-L install_target/lib lib/test-compile.cc -loxli
 	rm -rf install_target
 
 ## test        : run the khmer test suite
@@ -275,5 +286,24 @@ convert-release-notes:
 	for file in doc/release-notes/*.md; do \
 		pandoc --from=markdown --to=rst $${file} > $${file%%.md}.rst; \
 		done
+
+list-authors:
+	@echo '\author[1]{Michael R. Crusoe}'
+	@git log --format='\author[]{%aN}' | sort -uk2 | \
+		grep -v 'root\|crusoe\|titus'
+	@echo '\author[]{C. Titus Brown}'
+	@echo '\affil[1]{mcrusoe@msu.edu}'
+	@git log --format='\author[]{%aN} \affil[]{%aE}' | sort -uk2 | \
+		awk -F\\ '{print "\\"$$3}' | grep -v \
+		'root\|crusoe\|titus\|waffle\|boyce\|pickett.rodney'
+	# R. Boyce requested to be removed 2015/05/21
+	# via pers correspondence to MRC
+	# P Rodney requested to be removed 2015/06/22 via pers correspondence
+	# to MRC
+	@echo '\affil[]{titus@idyll.org}'
+
+list-author-emails:
+	@echo 'name, E-Mail Address'
+	@git log --format='%aN,%aE' | sort -u | grep -v 'root\|waffle\|boyce'
 
 FORCE:

@@ -19,11 +19,11 @@ import screed
 
 import nose
 from nose.plugins.attrib import attr
+from nose.tools import assert_raises
+
 
 MAX_COUNT = 255
 MAX_BIGCOUNT = 65535
-
-#
 
 # from http://www.rsok.com/~jrm/printprimes.html
 PRIMES_1m = [1000003, 1009837]
@@ -43,7 +43,7 @@ def teardown():
 class Test_CountingHash(object):
 
     def setup(self):
-        self.hi = khmer.CountingHash(12, PRIMES_1m)
+        self.hi = khmer._CountingHash(12, PRIMES_1m)
 
     def test_failed_get(self):
         GG = 'G' * 12                   # forward_hash: 11184810
@@ -124,7 +124,7 @@ class Test_CountingHash(object):
 
 
 def test_get_raw_tables():
-    ht = khmer.new_counting_hash(20, 1e5, 4)
+    ht = khmer.CountingHash(20, 1e5, 4)
     tables = ht.get_raw_tables()
 
     for size, table in zip(ht.hashsizes(), tables):
@@ -133,7 +133,7 @@ def test_get_raw_tables():
 
 
 def test_get_raw_tables_view():
-    ht = khmer.new_counting_hash(20, 1e5, 4)
+    ht = khmer.CountingHash(20, 1e5, 4)
     tables = ht.get_raw_tables()
     for tab in tables:
         assert sum(tab.tolist()) == 0
@@ -145,7 +145,7 @@ def test_get_raw_tables_view():
 @attr('huge')
 def test_toobig():
     try:
-        ct = khmer.new_counting_hash(30, 1e13, 1)
+        ct = khmer.CountingHash(30, 1e13, 1)
         assert 0, "this should fail"
     except MemoryError as err:
         print(str(err))
@@ -155,7 +155,7 @@ def test_3_tables():
     x = list(PRIMES_1m)
     x.append(1000005)
 
-    hi = khmer.CountingHash(12, x)
+    hi = khmer._CountingHash(12, x)
 
     GG = 'G' * 12                   # forward_hash: 11184810
     assert khmer.forward_hash(GG, 12) == 11184810
@@ -186,7 +186,7 @@ def test_3_tables():
 
 
 def test_simple_median():
-    hi = khmer.new_counting_hash(6, 1e6, 2)
+    hi = khmer.CountingHash(6, 1e6, 2)
 
     hi.consume("AAAAAA")
     (median, average, stddev) = hi.get_median_count("AAAAAA")
@@ -225,7 +225,7 @@ def test_simple_median():
 
 
 def test_median_too_short():
-    hi = khmer.new_counting_hash(6, 1e6, 2)
+    hi = khmer.CountingHash(6, 1e6, 2)
 
     hi.consume("AAAAAA")
     try:
@@ -236,7 +236,7 @@ def test_median_too_short():
 
 
 def test_median_at_least():
-    hi = khmer.new_counting_hash(6, 1e6, 2)
+    hi = khmer.CountingHash(6, 1e6, 2)
 
     hi.consume("AAAAAA")
     assert hi.median_at_least("AAAAAA", 1)
@@ -261,7 +261,7 @@ def test_median_at_least():
 
 def test_median_at_least_single_gt():
     K = 20
-    hi = khmer.new_counting_hash(K, 1e6, 2)
+    hi = khmer.CountingHash(K, 1e6, 2)
 
     kmers = ['ATCGATCGATCGATCGATCG',
              'GTACGTACGTACGTACGTAC',
@@ -274,7 +274,7 @@ def test_median_at_least_single_gt():
 
 def test_median_at_least_single_lt():
     K = 20
-    hi = khmer.new_counting_hash(K, 1e6, 2)
+    hi = khmer.CountingHash(K, 1e6, 2)
 
     kmers = ['ATCGATCGATCGATCGATCG',
              'GTACGTACGTACGTACGTAC',
@@ -288,7 +288,7 @@ def test_median_at_least_single_lt():
 def test_median_at_least_odd_gt():
     # test w/odd number of k-mers
     K = 20
-    hi = khmer.new_counting_hash(K, 1e6, 2)
+    hi = khmer.CountingHash(K, 1e6, 2)
 
     seqs = ['ATCGATCGATCGATCGATCGCC',
             'GTACGTACGTACGTACGTACCC',
@@ -301,7 +301,7 @@ def test_median_at_least_odd_gt():
 
 def test_median_at_least_odd_lt():
     K = 20
-    hi = khmer.new_counting_hash(K, 1e6, 2)
+    hi = khmer.CountingHash(K, 1e6, 2)
 
     seqs = ['ATCGATCGATCGATCGATCGCC',
             'GTACGTACGTACGTACGTACCC',
@@ -315,7 +315,7 @@ def test_median_at_least_odd_lt():
 # Test median with even number of k-mers
 def test_median_at_least_even_gt():
     K = 20
-    hi = khmer.new_counting_hash(K, 1e6, 2)
+    hi = khmer.CountingHash(K, 1e6, 2)
 
     seqs = ['ATCGATCGATCGATCGATCGCCC',
             'GTACGTACGTACGTACGTACCCC',
@@ -328,7 +328,7 @@ def test_median_at_least_even_gt():
 
 def test_median_at_least_even_lt():
     K = 20
-    hi = khmer.new_counting_hash(K, 1e6, 2)
+    hi = khmer.CountingHash(K, 1e6, 2)
 
     seqs = ['ATCGATCGATCGATCGATCGCCC',
             'GTACGTACGTACGTACGTACCCC',
@@ -342,7 +342,7 @@ def test_median_at_least_even_lt():
 def test_median_at_least_comp():
     K = 20
     C = 4
-    hi = khmer.new_counting_hash(K, 1e6, 2)
+    hi = khmer.CountingHash(K, 1e6, 2)
 
     seqs = ['ATCGATCGATCGATCGATCGCCC',
             'GTACGTACGTACGTACGTACCCC',
@@ -358,7 +358,7 @@ def test_median_at_least_comp():
 
 
 def test_median_at_least_exception():
-    ht = khmer.new_counting_hash(20, 1e6, 2)
+    ht = khmer.CountingHash(20, 1e6, 2)
     try:
         ht.median_at_least('ATGGCTGATCGAT', 1)
         assert 0, "should have thrown ValueError"
@@ -367,25 +367,25 @@ def test_median_at_least_exception():
 
 
 def test_simple_kadian():
-    hi = khmer.new_counting_hash(6, 1e6, 2)
+    hi = khmer.CountingHash(6, 1e6, 2)
     hi.consume("ACTGCTATCTCTAGAGCTATG")
     assert hi.get_kadian_count("ACTGCTATCTCTAGAGCTATG") == 1
 
-    hi = khmer.new_counting_hash(6, 1e6, 2)
+    hi = khmer.CountingHash(6, 1e6, 2)
     hi.consume("ACTGCTATCTCTAGAGCTATG")
     hi.consume("ACTGCTATCTCTAGAcCTATG")
     #           ---------------^
     x = hi.get_kadian_count("ACTGCTATCTCTAGAGCTATG")
     assert x == 2, x
 
-    hi = khmer.new_counting_hash(6, 1e6, 2)
+    hi = khmer.CountingHash(6, 1e6, 2)
     hi.consume("ACTGCTATCTCTAGAGCTATG")
     hi.consume("ACTGCTATCTCTAGAcCTATG")
     #           ---------------^---^
     x = hi.get_kadian_count("ACTGCTATCTCTAGAGCTATG")
     assert x == 2
 
-    hi = khmer.new_counting_hash(6, 1e6, 2)
+    hi = khmer.CountingHash(6, 1e6, 2)
     hi.consume("ACTGCTATCTCTAGAGCTATG")
     hi.consume("ACTGCTATCTCTAGtGCTAcG")
     #           --------------^^---^
@@ -394,11 +394,11 @@ def test_simple_kadian():
 
 
 def test_simple_kadian_2():
-    hi = khmer.new_counting_hash(6, 1e6, 2)
+    hi = khmer.CountingHash(6, 1e6, 2)
     hi.consume("ACTGCTATCTCTAGAGCTATG")
     assert hi.get_kadian_count("ACTGCTATCTCTAGAGCTATG") == 1
 
-    hi = khmer.new_counting_hash(6, 1e6, 2)
+    hi = khmer.CountingHash(6, 1e6, 2)
     hi.consume("ACTGCTATCTCTAGAGCTATG")
     # hi.consume("ACaGCTATCTCTAGAGCTATG")
     hi.consume("ACAGCTATCTCTAGAGCTATG")
@@ -406,7 +406,7 @@ def test_simple_kadian_2():
     x = hi.get_kadian_count("ACTGCTATCTCTAGAGCTATG")
     assert x == 2, x
 
-    hi = khmer.new_counting_hash(6, 1e6, 2)
+    hi = khmer.CountingHash(6, 1e6, 2)
     hi.consume("ACTGCTATCTCTAGAGCTATG")
     # hi.consume("ACaGCTATCTCTAGAcCTATG")
     hi.consume("ACAGCTATCTCTAGACCTATG")
@@ -414,7 +414,7 @@ def test_simple_kadian_2():
     x = hi.get_kadian_count("ACTGCTATCTCTAGAGCTATG")
     assert x == 1, x
 
-    hi = khmer.new_counting_hash(6, 1e6, 2)
+    hi = khmer.CountingHash(6, 1e6, 2)
     hi.consume("ACTGCTATCTCTAGAGCTATG")
     # hi.consume("ACTGCTATCgCTAGAGCTATG")
     hi.consume("ACTGCTATCGCTAGAGCTATG")
@@ -424,11 +424,11 @@ def test_simple_kadian_2():
 
 
 def test_2_kadian():
-    hi = khmer.new_counting_hash(6, 1e6, 2)
+    hi = khmer.CountingHash(6, 1e6, 2)
     hi.consume("ACTGCTATCTCTAGAGCTATG")
     assert hi.get_kadian_count("ACTGCTATCTCTAGAGCTATG", 2) == 1
 
-    hi = khmer.new_counting_hash(6, 1e6, 2)
+    hi = khmer.CountingHash(6, 1e6, 2)
     hi.consume("ACTGCTATCTCTAGAGCTATG")
     # hi.consume("ACTGCTATCTCTAGAcCTATG")
     hi.consume("ACTGCTATCTCTAGACCTATG")
@@ -436,14 +436,14 @@ def test_2_kadian():
     x = hi.get_kadian_count("ACTGCTATCTCTAGAGCTATG", 2)
     assert x == 2, x
 
-    hi = khmer.new_counting_hash(6, 1e6, 2)
+    hi = khmer.CountingHash(6, 1e6, 2)
     hi.consume("ACTGCTATCTCTAGAGCTATG")
     # hi.consume("ACTGCTATCTCTAGAcCTAtG")
     hi.consume("ACTGCTATCTCTAGACCTATG")
     #           ---------------^---^
     assert hi.get_kadian_count("ACTGCTATCTCTAGAGCTATG", 2) == 2
 
-    hi = khmer.new_counting_hash(6, 1e6, 2)
+    hi = khmer.CountingHash(6, 1e6, 2)
     hi.consume("ACTGCTATCTCTAGAGCTATG")
     # hi.consume("ACTGCTATCTCTACtcCTAtG")
     hi.consume("ACTGCTATCTCTACTCCTATG")
@@ -451,7 +451,7 @@ def test_2_kadian():
     x = hi.get_kadian_count("ACTGCTATCTCTAGAGCTATG", 2)
     assert x == 2, x
 
-    hi = khmer.new_counting_hash(6, 1e6, 2)
+    hi = khmer.CountingHash(6, 1e6, 2)
     hi.consume("ACTGCTATCTCTAGAGCTATG")
     # hi.consume("ACTGCTgTCTCTACtcCTAtG")
     hi.consume("ACTGCTGTCTCTACTCCTATG")
@@ -461,7 +461,7 @@ def test_2_kadian():
 
 
 def test_get_kmer_counts_too_short():
-    hi = khmer.new_counting_hash(6, 1e6, 2)
+    hi = khmer.CountingHash(6, 1e6, 2)
 
     hi.consume("AAAAAA")
     counts = hi.get_kmer_counts("A")
@@ -469,7 +469,7 @@ def test_get_kmer_counts_too_short():
 
 
 def test_get_kmer_hashes_too_short():
-    hi = khmer.new_counting_hash(6, 1e6, 2)
+    hi = khmer.CountingHash(6, 1e6, 2)
 
     hi.consume("AAAAAA")
     hashes = hi.get_kmer_hashes("A")
@@ -477,7 +477,7 @@ def test_get_kmer_hashes_too_short():
 
 
 def test_get_kmers_too_short():
-    hi = khmer.new_counting_hash(6, 1e6, 2)
+    hi = khmer.CountingHash(6, 1e6, 2)
 
     hi.consume("AAAAAA")
     kmers = hi.get_kmers("A")
@@ -485,7 +485,7 @@ def test_get_kmers_too_short():
 
 
 def test_get_kmer_counts():
-    hi = khmer.new_counting_hash(6, 1e6, 2)
+    hi = khmer.CountingHash(6, 1e6, 2)
 
     hi.consume("AAAAAA")
     counts = hi.get_kmer_counts("AAAAAA")
@@ -522,7 +522,7 @@ def test_get_kmer_counts():
 
 
 def test_get_kmer_hashes():
-    hi = khmer.new_counting_hash(6, 1e6, 2)
+    hi = khmer.CountingHash(6, 1e6, 2)
 
     hi.consume("AAAAAA")
     hashes = hi.get_kmer_hashes("AAAAAA")
@@ -559,7 +559,7 @@ def test_get_kmer_hashes():
 
 
 def test_get_kmers():
-    hi = khmer.new_counting_hash(6, 1e6, 2)
+    hi = khmer.CountingHash(6, 1e6, 2)
 
     kmers = hi.get_kmers("AAAAAA")
     assert kmers == ["AAAAAA"]
@@ -574,9 +574,9 @@ def test_save_load_large():
         inpath = utils.get_test_data('random-20-a.fa')
         savepath = utils.get_temp_filename(ctfile)
 
-        sizes = khmer.get_n_primes_above_x(1, 2**31)
+        sizes = khmer.get_n_primes_near_x(1, 2 ** 31 + 1000)
 
-        orig = khmer.CountingHash(12, sizes)
+        orig = khmer._CountingHash(12, sizes)
         orig.consume_fasta(inpath)
         orig.save(savepath)
 
@@ -598,15 +598,15 @@ def test_save_load():
     sizes = list(PRIMES_1m)
     sizes.append(1000005)
 
-    hi = khmer.CountingHash(12, sizes)
+    hi = khmer._CountingHash(12, sizes)
     hi.consume_fasta(inpath)
     hi.save(savepath)
 
-    ht = khmer.CountingHash(12, sizes)
+    ht = khmer._CountingHash(12, sizes)
     try:
         ht.load(savepath)
-    except IOError as err:
-        assert 0, 'Should not produce an IOError: ' + str(err)
+    except OSError as err:
+        assert 0, 'Should not produce an OSError: ' + str(err)
 
     tracking = khmer._Hashbits(12, sizes)
     x = hi.abundance_distribution(inpath, tracking)
@@ -625,7 +625,7 @@ def test_load_truncated():
 
     sizes = khmer.get_n_primes_near_x(3, 200)
 
-    hi = khmer.CountingHash(12, sizes)
+    hi = khmer._CountingHash(12, sizes)
     hi.consume_fasta(inpath)
     hi.save(savepath)
 
@@ -638,7 +638,7 @@ def test_load_truncated():
         try:
             ht = khmer.load_counting_hash(truncpath)
             assert 0, "this should not be reached!"
-        except IOError as err:
+        except OSError as err:
             print(str(err))
 
 
@@ -652,7 +652,7 @@ def test_load_gz():
     sizes.append(1000005)
 
     # save uncompressed hashtable.
-    hi = khmer.CountingHash(12, sizes)
+    hi = khmer._CountingHash(12, sizes)
     hi.consume_fasta(inpath)
     hi.save(savepath)
 
@@ -664,11 +664,11 @@ def test_load_gz():
     in_file.close()
 
     # load compressed hashtable.
-    ht = khmer.CountingHash(12, sizes)
+    ht = khmer._CountingHash(12, sizes)
     try:
         ht.load(loadpath)
-    except IOError as err:
-        assert 0, "Should not produce an IOError: " + str(err)
+    except OSError as err:
+        assert 0, "Should not produce an OSError: " + str(err)
 
     tracking = khmer._Hashbits(12, sizes)
     x = hi.abundance_distribution(inpath, tracking)
@@ -687,15 +687,15 @@ def test_save_load_gz():
     sizes = list(PRIMES_1m)
     sizes.append(1000005)
 
-    hi = khmer.CountingHash(12, sizes)
+    hi = khmer._CountingHash(12, sizes)
     hi.consume_fasta(inpath)
     hi.save(savepath)
 
-    ht = khmer.CountingHash(12, sizes)
+    ht = khmer._CountingHash(12, sizes)
     try:
         ht.load(savepath)
-    except IOError as err:
-        assert 0, 'Should not produce an IOError: ' + str(err)
+    except OSError as err:
+        assert 0, 'Should not produce an OSError: ' + str(err)
 
     tracking = khmer._Hashbits(12, sizes)
     x = hi.abundance_distribution(inpath, tracking)
@@ -707,8 +707,19 @@ def test_save_load_gz():
     assert x == y, (x, y)
 
 
+def test_load_empty_files():
+    def do_load_ct(fname):
+        with assert_raises(OSError):
+            ct = khmer.load_counting_hash(fname)
+
+    # Check empty files, compressed or not
+    for ext in ['', '.gz']:
+        fn = utils.get_test_data('empty-file' + ext)
+        do_load_ct(fn)
+
+
 def test_trim_full():
-    hi = khmer.new_counting_hash(6, 1e6, 2)
+    hi = khmer.CountingHash(6, 1e6, 2)
 
     hi.consume(DNA)
     hi.consume(DNA)
@@ -718,7 +729,7 @@ def test_trim_full():
 
 
 def test_trim_short():
-    hi = khmer.new_counting_hash(6, 1e6, 2)
+    hi = khmer.CountingHash(6, 1e6, 2)
 
     hi.consume(DNA)
     hi.consume(DNA[:50])
@@ -730,7 +741,7 @@ def test_trim_short():
 
 
 def test_find_spectral_error_positions_1():
-    hi = khmer.new_counting_hash(8, 1e6, 2)
+    hi = khmer.CountingHash(8, 1e6, 2)
 
     hi.consume(DNA)
     hi.consume(DNA[:30])
@@ -743,7 +754,7 @@ def test_find_spectral_error_positions_1():
 
 
 def test_find_spectral_error_positions_2():
-    hi = khmer.new_counting_hash(8, 1e6, 2)
+    hi = khmer.CountingHash(8, 1e6, 2)
 
     hi.consume(DNA)
     hi.consume(DNA)
@@ -753,7 +764,7 @@ def test_find_spectral_error_positions_2():
 
 
 def test_find_spectral_error_positions_6():
-    hi = khmer.new_counting_hash(8, 1e6, 2)
+    hi = khmer.CountingHash(8, 1e6, 2)
 
     hi.consume(DNA)
     hi.consume(DNA[1:])
@@ -766,7 +777,7 @@ def test_find_spectral_error_positions_6():
 
 
 def test_find_spectral_error_positions_4():
-    hi = khmer.new_counting_hash(8, 1e6, 2)
+    hi = khmer.CountingHash(8, 1e6, 2)
 
     hi.consume(DNA)
 
@@ -775,7 +786,7 @@ def test_find_spectral_error_positions_4():
 
 
 def test_find_spectral_error_positions_5():
-    hi = khmer.new_counting_hash(8, 1e6, 2)
+    hi = khmer.CountingHash(8, 1e6, 2)
 
     hi.consume(DNA)
     hi.consume(DNA[:10])
@@ -787,7 +798,7 @@ def test_find_spectral_error_positions_5():
 
 def test_find_spectral_error_locs7():
     K = 8
-    hi = khmer.new_counting_hash(K, 1e6, 2)
+    hi = khmer.CountingHash(K, 1e6, 2)
 
     hi.consume(DNA)
     hi.consume(DNA[K:])
@@ -800,7 +811,7 @@ def test_find_spectral_error_locs7():
 
 
 def test_find_spectral_error_positions_err():
-    hi = khmer.new_counting_hash(8, 1e6, 2)
+    hi = khmer.CountingHash(8, 1e6, 2)
 
     try:
         posns = hi.find_spectral_error_positions(DNA[:6], 1)
@@ -817,7 +828,7 @@ def test_find_spectral_error_positions_err():
 
 def test_maxcount():
     # hashtable should saturate at some point so as not to overflow counter
-    kh = khmer.new_counting_hash(4, 4 ** 4, 4)
+    kh = khmer.CountingHash(4, 4 ** 4, 4)
     kh.set_use_bigcount(False)
 
     last_count = None
@@ -835,7 +846,7 @@ def test_maxcount():
 
 def test_maxcount_with_bigcount():
     # hashtable should not saturate, if use_bigcount is set.
-    kh = khmer.new_counting_hash(4, 4 ** 4, 4)
+    kh = khmer.CountingHash(4, 4 ** 4, 4)
     kh.set_use_bigcount(True)
 
     last_count = None
@@ -853,7 +864,7 @@ def test_maxcount_with_bigcount():
 
 def test_maxcount_with_bigcount_save():
     # hashtable should not saturate, if use_bigcount is set.
-    kh = khmer.new_counting_hash(4, 4 ** 4, 4)
+    kh = khmer.CountingHash(4, 4 ** 4, 4)
     kh.set_use_bigcount(True)
 
     for i in range(0, 1000):
@@ -863,11 +874,11 @@ def test_maxcount_with_bigcount_save():
     savepath = utils.get_temp_filename('tempcountingsave.ht')
     kh.save(savepath)
 
-    kh = khmer.new_counting_hash(1, 1, 1)
+    kh = khmer.CountingHash(1, 1, 1)
     try:
         kh.load(savepath)
-    except IOError as err:
-        assert 0, "Should not produce an IOError: " + str(err)
+    except OSError as err:
+        assert 0, "Should not produce an OSError: " + str(err)
 
     c = kh.get('AAAA')
     assert c == 1000, "should be able to count to 1000: %d" % c
@@ -876,17 +887,17 @@ def test_maxcount_with_bigcount_save():
 
 def test_bigcount_save():
     # hashtable should not saturate, if use_bigcount is set.
-    kh = khmer.new_counting_hash(4, 4 ** 4, 4)
+    kh = khmer.CountingHash(4, 4 ** 4, 4)
     kh.set_use_bigcount(True)
 
     savepath = utils.get_temp_filename('tempcountingsave.ht')
     kh.save(savepath)
 
-    kh = khmer.new_counting_hash(1, 1, 1)
+    kh = khmer.CountingHash(1, 1, 1)
     try:
         kh.load(savepath)
-    except IOError as err:
-        assert 0, "Should not produce an IOError: " + str(err)
+    except OSError as err:
+        assert 0, "Should not produce an OSError: " + str(err)
 
     # set_use_bigcount should still be True after load (i.e. should be saved)
 
@@ -900,17 +911,17 @@ def test_bigcount_save():
 
 
 def test_nobigcount_save():
-    kh = khmer.new_counting_hash(4, 4 ** 4, 4)
+    kh = khmer.CountingHash(4, 4 ** 4, 4)
     # kh.set_use_bigcount(False) <-- this is the default
 
     savepath = utils.get_temp_filename('tempcountingsave.ht')
     kh.save(savepath)
 
-    kh = khmer.new_counting_hash(1, 1, 1)
+    kh = khmer.CountingHash(1, 1, 1)
     try:
         kh.load(savepath)
-    except IOError as err:
-        assert 0, 'Should not produce an IOError: ' + str(err)
+    except OSError as err:
+        assert 0, 'Should not produce an OSError: ' + str(err)
 
     # set_use_bigcount should still be False after load (i.e. should be saved)
 
@@ -924,8 +935,8 @@ def test_nobigcount_save():
 
 
 def test_bigcount_abund_dist():
-    kh = khmer.new_counting_hash(18, 1e2, 4)
-    tracking = khmer.new_hashbits(18, 1e2, 4)
+    kh = khmer.CountingHash(18, 1e2, 4)
+    tracking = khmer.Hashbits(18, 1e2, 4)
     kh.set_use_bigcount(True)
 
     seqpath = utils.get_test_data('test-abund-read-2.fa')
@@ -936,12 +947,12 @@ def test_bigcount_abund_dist():
     print(kh.get('GGTTGACGGGGCTCAGGG'))
 
     pdist = [(i, dist[i]) for i in range(len(dist)) if dist[i]]
-    assert dist[1001] == 1, pdist
+    assert dist[1002] == 1, pdist
 
 
 def test_bigcount_abund_dist_2():
-    kh = khmer.new_counting_hash(18, 1e7, 4)
-    tracking = khmer.new_hashbits(18, 1e7, 4)
+    kh = khmer.CountingHash(18, 1e7, 4)
+    tracking = khmer.Hashbits(18, 1e7, 4)
     kh.set_use_bigcount(True)
 
     seqpath = utils.get_test_data('test-abund-read.fa')
@@ -958,7 +969,7 @@ def test_bigcount_abund_dist_2():
 
 
 def test_bigcount_overflow():
-    kh = khmer.new_counting_hash(18, 1e7, 4)
+    kh = khmer.CountingHash(18, 1e7, 4)
     kh.set_use_bigcount(True)
 
     for i in range(0, 70000):
@@ -968,32 +979,33 @@ def test_bigcount_overflow():
 
 
 def test_get_ksize():
-    kh = khmer.new_counting_hash(22, 1, 1)
+    kh = khmer.CountingHash(22, 1, 1)
     assert kh.ksize() == 22
 
 
 def test_get_hashsizes():
-    kh = khmer.new_counting_hash(22, 100, 4)
-    assert kh.hashsizes() == [101, 103, 107, 109], kh.hashsizes()
+    kh = khmer.CountingHash(22, 100, 4)
+    # Py2/3 hack, longify converts to long in py2, remove once py2 isn't
+    # supported any longer.
+    expected = utils.longify([97, 89, 83, 79])
+    assert kh.hashsizes() == expected, kh.hashsizes()
+
 
 # def test_collect_high_abundance_kmers():
 #    seqpath = utils.get_test_data('test-abund-read-2.fa')
 #
-#    kh = khmer.new_counting_hash(18, 1e6, 4)
+#    kh = khmer.CountingHash(18, 1e6, 4)
 #    hb = kh.collect_high_abundance_kmers(seqpath, 2, 4)
-
-
-#
 
 
 def test_load_notexist_should_fail():
     savepath = utils.get_temp_filename('tempcountingsave0.ht')
 
-    hi = khmer.new_counting_hash(12, 1000)
+    hi = khmer.CountingHash(12, 1000, 2)
     try:
         hi.load(savepath)
         assert 0, "load should fail"
-    except IOError as e:
+    except OSError as e:
         print(str(e))
 
 
@@ -1001,7 +1013,7 @@ def test_load_truncated_should_fail():
     inpath = utils.get_test_data('random-20-a.fa')
     savepath = utils.get_temp_filename('tempcountingsave0.ht')
 
-    hi = khmer.new_counting_hash(12, 1000)
+    hi = khmer.CountingHash(12, 1000, 2)
     hi.consume_fasta(inpath)
     hi.save(savepath)
 
@@ -1013,22 +1025,22 @@ def test_load_truncated_should_fail():
     fp.write(data[:1000])
     fp.close()
 
-    hi = khmer.new_counting_hash(12, 1)
+    hi = khmer._CountingHash(12, [1])
     try:
         hi.load(savepath)
         assert 0, "load should fail"
-    except IOError as e:
+    except OSError as e:
         print(str(e))
 
 
 def test_load_gz_notexist_should_fail():
     savepath = utils.get_temp_filename('tempcountingsave0.ht.gz')
 
-    hi = khmer.new_counting_hash(12, 1000)
+    hi = khmer.CountingHash(12, 1000, 2)
     try:
         hi.load(savepath)
         assert 0, "load should fail"
-    except IOError as e:
+    except OSError as e:
         print(str(e))
 
 
@@ -1036,7 +1048,7 @@ def test_load_gz_truncated_should_fail():
     inpath = utils.get_test_data('random-20-a.fa')
     savepath = utils.get_temp_filename('tempcountingsave0.ht.gz')
 
-    hi = khmer.new_counting_hash(12, 1000)
+    hi = khmer.CountingHash(12, 1000, 2)
     hi.consume_fasta(inpath)
     hi.save(savepath)
 
@@ -1048,74 +1060,74 @@ def test_load_gz_truncated_should_fail():
     fp.write(data[:1000])
     fp.close()
 
-    hi = khmer.new_counting_hash(12, 1)
+    hi = khmer._CountingHash(12, [1])
     try:
         hi.load(savepath)
         assert 0, "load should fail"
-    except IOError as e:
+    except OSError as e:
         print(str(e))
 
 
 def test_counting_file_version_check():
-    ht = khmer.new_counting_hash(12, 1, 1)
+    ht = khmer.CountingHash(12, 1, 1)
 
     inpath = utils.get_test_data('badversion-k12.ct')
 
     try:
         ht.load(inpath)
         assert 0, "this should fail"
-    except IOError as e:
+    except OSError as e:
         print(str(e))
 
 
 def test_counting_gz_file_version_check():
-    ht = khmer.new_counting_hash(12, 1, 1)
+    ht = khmer.CountingHash(12, 1, 1)
 
     inpath = utils.get_test_data('badversion-k12.ct.gz')
 
     try:
         ht.load(inpath)
         assert 0, "this should fail"
-    except IOError as e:
+    except OSError as e:
         print(str(e))
 
 
 def test_counting_file_type_check():
     inpath = utils.get_test_data('goodversion-k12.ht')
 
-    kh = khmer.new_counting_hash(12, 1, 1)
+    kh = khmer.CountingHash(12, 1, 1)
 
     try:
         kh.load(inpath)
         assert 0, "this should fail"
-    except IOError as e:
+    except OSError as e:
         print(str(e))
 
 
 def test_counting_gz_file_type_check():
-    ht = khmer.new_hashbits(12, 1, 1)
+    ht = khmer.Hashbits(12, 1, 1)
 
     inpath = utils.get_test_data('goodversion-k12.ht.gz')
 
-    kh = khmer.new_counting_hash(12, 1, 1)
+    kh = khmer.CountingHash(12, 1, 1)
 
     try:
         kh.load(inpath)
         assert 0, "this should fail"
-    except IOError as e:
+    except OSError as e:
         print(str(e))
 
 
 def test_counting_bad_primes_list():
     try:
-        ht = khmer.CountingHash(12, ["a", "b", "c"], 1)
+        ht = khmer._CountingHash(12, ["a", "b", "c"], 1)
         assert 0, "bad list of primes should fail"
     except TypeError as e:
         print(str(e))
 
 
 def test_bad_use_bigcount():
-    countingtable = khmer.new_counting_hash(4, 4 ** 4, 4)
+    countingtable = khmer.CountingHash(4, 4 ** 4, 4)
     countingtable.set_use_bigcount(True)
     assert countingtable.get_use_bigcount()
     try:
@@ -1126,16 +1138,16 @@ def test_bad_use_bigcount():
 
 
 def test_consume_absentfasta():
-    countingtable = khmer.new_counting_hash(4, 4 ** 4, 4)
+    countingtable = khmer.CountingHash(4, 4 ** 4, 4)
     try:
         countingtable.consume_fasta("absent_file.fa")
         assert 0, "This should fail"
-    except IOError as err:
+    except OSError as err:
         print(str(err))
 
 
 def test_consume_absentfasta_with_reads_parser():
-    countingtable = khmer.new_counting_hash(4, 4 ** 4, 4)
+    countingtable = khmer.CountingHash(4, 4 ** 4, 4)
     try:
         countingtable.consume_fasta_with_reads_parser()
         assert 0, "this should fail"
@@ -1145,14 +1157,14 @@ def test_consume_absentfasta_with_reads_parser():
         readparser = ReadParser(utils.get_test_data('empty-file'))
         countingtable.consume_fasta_with_reads_parser(readparser)
         assert 0, "this should fail"
-    except IOError as err:
+    except OSError as err:
         print(str(err))
     except ValueError as err:
         print(str(err))
 
 
 def test_badconsume():
-    countingtable = khmer.new_counting_hash(4, 4 ** 4, 4)
+    countingtable = khmer.CountingHash(4, 4 ** 4, 4)
     try:
         countingtable.consume()
         assert 0, "this should fail"
@@ -1166,7 +1178,7 @@ def test_badconsume():
 
 
 def test_get_badmin_count():
-    countingtable = khmer.new_counting_hash(4, 4 ** 4, 4)
+    countingtable = khmer.CountingHash(4, 4 ** 4, 4)
     try:
         countingtable.get_min_count()
         assert 0, "this should fail"
@@ -1180,7 +1192,7 @@ def test_get_badmin_count():
 
 
 def test_get_badmax_count():
-    countingtable = khmer.new_counting_hash(4, 4 ** 4, 4)
+    countingtable = khmer.CountingHash(4, 4 ** 4, 4)
     try:
         countingtable.get_max_count()
         assert 0, "this should fail"
@@ -1194,7 +1206,7 @@ def test_get_badmax_count():
 
 
 def test_get_badmedian_count():
-    countingtable = khmer.new_counting_hash(4, 4 ** 4, 4)
+    countingtable = khmer.CountingHash(4, 4 ** 4, 4)
     try:
         countingtable.get_median_count()
         assert 0, "this should fail"
@@ -1208,7 +1220,7 @@ def test_get_badmedian_count():
 
 
 def test_get_badkadian_count():
-    countingtable = khmer.new_counting_hash(4, 4 ** 4, 4)
+    countingtable = khmer.CountingHash(4, 4 ** 4, 4)
     try:
         countingtable.get_kadian_count()
         assert 0, "this should fail"
@@ -1222,7 +1234,7 @@ def test_get_badkadian_count():
 
 
 def test_badget():
-    countingtable = khmer.new_counting_hash(4, 4 ** 4, 4)
+    countingtable = khmer.CountingHash(4, 4 ** 4, 4)
     try:
         countingtable.get()
         assert 0, "this should fail"
@@ -1231,7 +1243,7 @@ def test_badget():
 
 
 def test_badget_2():
-    countingtable = khmer.new_counting_hash(6, 1e6)
+    countingtable = khmer.CountingHash(6, 1e6, 2)
 
     countingtable.consume(DNA)
 
@@ -1247,7 +1259,7 @@ def test_badget_2():
 
 
 def test_badtrim():
-    countingtable = khmer.new_counting_hash(6, 1e6, 2)
+    countingtable = khmer.CountingHash(6, 1e6, 2)
 
     countingtable.consume(DNA)
     try:
@@ -1259,7 +1271,7 @@ def test_badtrim():
 
 
 def test_badfasta_count_kmers_by_position():
-    countingtable = khmer.new_counting_hash(4, 4 ** 4, 4)
+    countingtable = khmer.CountingHash(4, 4 ** 4, 4)
     try:
         countingtable.fasta_count_kmers_by_position()
     except TypeError as err:
@@ -1279,7 +1291,7 @@ def test_badfasta_count_kmers_by_position():
 
 
 def test_badload():
-    countingtable = khmer.new_counting_hash(4, 4 ** 4, 4)
+    countingtable = khmer.CountingHash(4, 4 ** 4, 4)
     try:
         countingtable.load()
         assert 0, "this should fail"
@@ -1288,7 +1300,7 @@ def test_badload():
 
 
 def test_badsave():
-    countingtable = khmer.new_counting_hash(4, 4 ** 4, 4)
+    countingtable = khmer.CountingHash(4, 4 ** 4, 4)
     try:
         countingtable.save()
         assert 0, "this should fail"
@@ -1297,7 +1309,7 @@ def test_badsave():
 
 
 def test_badksize():
-    countingtable = khmer.new_counting_hash(4, 4 ** 4, 4)
+    countingtable = khmer.CountingHash(4, 4 ** 4, 4)
     try:
         countingtable.ksize(True)
         assert 0, "this should fail"
@@ -1306,7 +1318,7 @@ def test_badksize():
 
 
 def test_badhashsizes():
-    countingtable = khmer.new_counting_hash(4, 4 ** 4, 4)
+    countingtable = khmer.CountingHash(4, 4 ** 4, 4)
     try:
         countingtable.hashsizes(True)
         assert 0, "this should fail"
@@ -1315,7 +1327,7 @@ def test_badhashsizes():
 
 
 def test_badconsume_and_tag():
-    countingtable = khmer.new_counting_hash(4, 4 ** 4, 4)
+    countingtable = khmer.CountingHash(4, 4 ** 4, 4)
     try:
         countingtable.consume_and_tag()
         assert 0, "this should fail"
@@ -1324,7 +1336,7 @@ def test_badconsume_and_tag():
 
 
 def test_consume_fasta_and_tag():
-    countingtable = khmer.new_counting_hash(4, 4 ** 4, 4)
+    countingtable = khmer.CountingHash(4, 4 ** 4, 4)
     try:
         countingtable.consume_fasta_and_tag()
         assert 0, "this should fail"
@@ -1334,7 +1346,7 @@ def test_consume_fasta_and_tag():
 
 
 def test_consume_and_retrieve_tags_1():
-    ct = khmer.new_counting_hash(4, 4 ** 4, 4)
+    ct = khmer.CountingHash(4, 4 ** 4, 4)
 
     # first, for each sequence, build tags.
     for record in screed.open(utils.get_test_data('test-graph2.fa')):
@@ -1358,7 +1370,7 @@ def test_consume_and_retrieve_tags_1():
 
 
 def test_consume_and_retrieve_tags_empty():
-    ct = khmer.new_counting_hash(4, 4 ** 4, 4)
+    ct = khmer.CountingHash(4, 4 ** 4, 4)
 
     # load each sequence but do not build tags - everything should be empty.
     for record in screed.open(utils.get_test_data('test-graph2.fa')):
@@ -1382,7 +1394,7 @@ def test_consume_and_retrieve_tags_empty():
 
 
 def test_find_all_tags_list_error():
-    ct = khmer.new_counting_hash(4, 4 ** 4, 4)
+    ct = khmer.CountingHash(4, 4 ** 4, 4)
 
     # load each sequence but do not build tags - everything should be empty.
     for record in screed.open(utils.get_test_data('test-graph2.fa')):
@@ -1417,8 +1429,8 @@ def test_abund_dist_gz_bigcount():
     # load the compressed bigcount table
     try:
         counting_hash = khmer.load_counting_hash(outfile)
-    except IOError as err:
-        assert 0, 'Should not produce IOError: ' + str(err)
+    except OSError as err:
+        assert 0, 'Should not produce OSError: ' + str(err)
     hashsizes = counting_hash.hashsizes()
     kmer_size = counting_hash.ksize()
     tracking = khmer._Hashbits(kmer_size, hashsizes)
@@ -1436,7 +1448,7 @@ def test_abund_dist_gz_bigcount():
 
 
 def test_counting_load_bigcount():
-    count_table = khmer.new_counting_hash(10, 1e5, 4)
+    count_table = khmer.CountingHash(10, 1e5, 4)
     count_table.set_use_bigcount(True)
     for i in range(500):
         print(i, count_table.count('ATATATATAT'))

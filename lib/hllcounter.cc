@@ -5,18 +5,18 @@
 // Contact: khmer-project@idyll.org
 //
 
-#include "hllcounter.hh"
-
 #include <math.h>
+#include <stdlib.h>
 #include <algorithm>
+#include <map>
 #include <numeric>
-#include <inttypes.h>
-#include <sstream>
+#include <utility>
 
+#include "hllcounter.hh"
 #include "khmer.hh"
+#include "khmer_exception.hh"
 #include "kmer_hash.hh"
 #include "read_parsers.hh"
-#include "khmer_exception.hh"
 
 #ifdef _OPENMP
 #include <omp.h>
@@ -392,20 +392,21 @@ void HLLCounter::consume_fasta(
                 // Iterate through the reads and consume their k-mers.
                 try {
                     read = parser->get_next_read();
-
-                    #pragma omp task default(none) firstprivate(read) \
-                    shared(counters, n_consumed_partial, total_reads_partial)
-                    {
-                        bool is_valid;
-                        int n, t = omp_get_thread_num();
-                        n = counters[t]->check_and_process_read(read.sequence,
-                        is_valid);
-                        n_consumed_partial[t] += n;
-                        if (is_valid) {
-                            total_reads_partial[t] += 1;
-                        }
-                    }
                 } catch (read_parsers::NoMoreReadsAvailable) {
+                    break;
+                }
+
+                #pragma omp task default(none) firstprivate(read) \
+                shared(counters, n_consumed_partial, total_reads_partial)
+                {
+                    bool is_valid;
+                    int n, t = omp_get_thread_num();
+                    n = counters[t]->check_and_process_read(read.sequence,
+                                                            is_valid);
+                    n_consumed_partial[t] += n;
+                    if (is_valid) {
+                        total_reads_partial[t] += 1;
+                    }
                 }
 
             } // while reads left for parser
