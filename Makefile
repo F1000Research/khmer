@@ -220,9 +220,9 @@ libtest: FORCE
 	test -f install_target/include/oxli/khmer.hh
 	test -d install_target/lib
 	test -f install_target/lib/liboxli.a
-	$(CXX) -o install_target/test-prog-static -I install_target/include \
+	$(CXX) -std=c++11 -o install_target/test-prog-static -I install_target/include \
 		lib/test-compile.cc install_target/lib/liboxli.a
-	$(CXX) -o install_target/test-prog-dynamic -I install_target/include \
+	$(CXX) -std=c++11 -o install_target/test-prog-dynamic -I install_target/include \
 		-L install_target/lib lib/test-compile.cc -loxli
 	rm -rf install_target
 
